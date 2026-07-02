@@ -5,9 +5,32 @@
   const fileListEl = document.getElementById('fileList');
   const resultsEl = document.getElementById('results');
   const statusEl = document.getElementById('status');
+  const correctionsInfoEl = document.getElementById('correctionsInfo');
 
   /** @type {{file: File, name: string}[]} */
   let selectedFiles = [];
+
+  function updateCorrectionsInfo() {
+    const count = countCorrections();
+    correctionsInfoEl.innerHTML = '';
+    if (count === 0) return;
+
+    const span = document.createElement('span');
+    span.textContent = `${count} rettelse${count === 1 ? '' : 'r'} husket. `;
+    correctionsInfoEl.appendChild(span);
+
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'link-btn';
+    resetBtn.textContent = 'Nulstil';
+    resetBtn.addEventListener('click', () => {
+      if (confirm('Slet alle huskede rettelser?')) {
+        clearCorrections();
+        updateCorrectionsInfo();
+      }
+    });
+    correctionsInfoEl.appendChild(resetBtn);
+  }
 
   function setStatus(msg, isError) {
     statusEl.textContent = msg || '';
@@ -77,6 +100,25 @@
     return text;
   }
 
+  function setBadge(row, stop) {
+    const existing = row.querySelector('.stop-row__badge');
+    if (existing) existing.remove();
+
+    if (!stop.ok) {
+      const warn = document.createElement('div');
+      warn.className = 'stop-row__badge';
+      warn.textContent = 'Tjek';
+      warn.title = 'Kunne ikke tolke adressen sikkert - kontrollér felterne';
+      row.appendChild(warn);
+    } else if (stop.fromMemory) {
+      const mem = document.createElement('div');
+      mem.className = 'stop-row__badge stop-row__badge--memory';
+      mem.textContent = '✓';
+      mem.title = 'Genkendt fra en tidligere rettelse';
+      row.appendChild(mem);
+    }
+  }
+
   function stopRow(stop, index) {
     const row = document.createElement('div');
     row.className = 'stop-row' + (stop.ok ? '' : ' stop-row--warn');
@@ -93,32 +135,53 @@
     nameInput.type = 'text';
     nameInput.value = stop.name;
     nameInput.placeholder = 'Kundenavn';
-    nameInput.addEventListener('input', () => { stop.name = nameInput.value; });
 
     const streetInput = document.createElement('input');
     streetInput.type = 'text';
     streetInput.value = stop.street;
     streetInput.placeholder = 'Vej + husnr';
-    streetInput.addEventListener('input', () => { stop.street = streetInput.value; });
 
     const cityInput = document.createElement('input');
     cityInput.type = 'text';
     cityInput.value = stop.cityLine;
     cityInput.placeholder = 'Postnr + by';
-    cityInput.addEventListener('input', () => { stop.cityLine = cityInput.value; });
+
+    function commit() {
+      stop.name = nameInput.value;
+      stop.street = streetInput.value;
+      stop.cityLine = cityInput.value;
+      stop.ok = true;
+      stop.fromMemory = false;
+      row.classList.remove('stop-row--warn');
+      setBadge(row, stop);
+      saveCorrection(stop.original, stop);
+      updateCorrectionsInfo();
+    }
+
+    nameInput.addEventListener('input', commit);
+    streetInput.addEventListener('input', commit);
+    cityInput.addEventListener('input', commit);
 
     fields.appendChild(nameInput);
     fields.appendChild(streetInput);
     fields.appendChild(cityInput);
     row.appendChild(fields);
 
-    if (!stop.ok) {
-      const warn = document.createElement('div');
-      warn.className = 'stop-row__badge';
-      warn.textContent = 'Tjek';
-      warn.title = 'Kunne ikke tolke adressen sikkert - kontrollér felterne';
-      row.appendChild(warn);
-    }
+    const swapBtn = document.createElement('button');
+    swapBtn.type = 'button';
+    swapBtn.className = 'swap-btn';
+    swapBtn.textContent = '⇄';
+    swapBtn.title = 'Byt kundenavn og vej om';
+    swapBtn.setAttribute('aria-label', 'Byt kundenavn og vej om');
+    swapBtn.addEventListener('click', () => {
+      const tmp = nameInput.value;
+      nameInput.value = streetInput.value;
+      streetInput.value = tmp;
+      commit();
+    });
+    row.appendChild(swapBtn);
+
+    setBadge(row, stop);
 
     return row;
   }
@@ -174,7 +237,7 @@
           setStatus(`${file.name}: ${error}`, true);
           continue;
         }
-        const stops = addresses.map(parseAddress);
+        const stops = applyCorrections(addresses.map(parseAddress));
         renderFileResult(file.name, stops);
       } catch (err) {
         setStatus(`${file.name}: kunne ikke læses (${err.message})`, true);
@@ -187,4 +250,5 @@
 
   convertBtn.addEventListener('click', convert);
   renderFileList();
+  updateCorrectionsInfo();
 })();
