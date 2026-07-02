@@ -46,10 +46,23 @@ function insertWordBoundaries(compact) {
   // c/o og v/-adresser bruger lille "v"/"c", som ikke rammer lille->stort reglen.
   s = s.replace(/([^\s])(v\/)/gi, '$1 $2');
   s = s.replace(/([^\s])(c\/o)/gi, '$1 $2');
+  // Selskabsformer (ApS, A/S) skal holdes samlet og adskilt fra ord på begge
+  // sider, uanset store/små bogstaver (fx "MIHTECApSKlejsgårdvej" skal give
+  // "MIHTEC ApS Klejsgårdvej", ikke "MIHTECAp" + "SKlejsgårdvej"). De
+  // beskyttes midlertidigt med et mærke, så lille->stort-reglen nedenfor ikke
+  // splitter dem ad indeni (Ap|S).
+  s = s.replace(/(?<=[A-Za-zÆØÅæøå])(?=A\/S)/g, ' ');
+  s = s.replace(/(?<=A\/S)(?=[A-Za-zÆØÅæøå])/g, ' ');
+  s = s.replace(/(?<=[A-Za-zÆØÅæøå])(?=ApS)/g, ' ');
+  s = s.replace(/(?<=ApS)(?=[A-Za-zÆØÅæøå])/g, ' ');
+  s = s.replace(/A\/S/g, ' ASSUFFIX ');
+  s = s.replace(/ApS/g, ' APSSUFFIX ');
   s = s.replace(/([a-zA-ZæøåÆØÅ])(\d)/g, '$1 $2');
   s = s.replace(/(\d)([a-zA-ZæøåÆØÅ])/g, '$1 $2');
   s = s.replace(/([a-zæøå])([A-ZÆØÅ])/g, '$1 $2');
   s = s.replace(/\s+/g, ' ').trim();
+  s = s.replace(/ASSUFFIX/g, 'A/S');
+  s = s.replace(/APSSUFFIX/g, 'ApS');
   return s;
 }
 
