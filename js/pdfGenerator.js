@@ -1,5 +1,5 @@
-// Genererer én stor-format PDF pr. CSV-fil - ét stop pr. side, ingen tabeller,
-// kun kundenavn / vej+husnr / postnr+by med rigelig luft mellem hvert stop.
+// Genererer én kompakt PDF pr. CSV-fil - flere stop pr. side, ingen tabeller
+// (bare tætpakket tekst), så en hel dags rute fylder få sider.
 
 function buildStopsPDF(stops, sourceName) {
   const { jsPDF } = window.jspdf;
@@ -7,30 +7,59 @@ function buildStopsPDF(stops, sourceName) {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const centerX = pageWidth / 2;
+  const marginX = 14;
+  const marginTop = 14;
+  const marginBottom = 12;
+  const contentWidth = pageWidth - marginX * 2;
+
+  const nameSize = 11;
+  const addrSize = 10;
+  const nameLineHeight = 4.6;
+  const addrLineHeight = 4.2;
+  const stopGap = 3;
+
+  let y = marginTop;
 
   stops.forEach((stop, i) => {
-    if (i > 0) doc.addPage();
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(nameSize);
+    const nameText = `${i + 1}. ${stop.name || '(intet navn)'}`;
+    const nameLines = doc.splitTextToSize(nameText, contentWidth);
 
-    doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150, 150, 150);
-    doc.text(`Stop ${i + 1} af ${stops.length}`, centerX, 18, { align: 'center' });
+    doc.setFontSize(addrSize);
+    const addrText = [stop.street, stop.cityLine].filter(Boolean).join(', ') || ' ';
+    const addrLines = doc.splitTextToSize(addrText, contentWidth);
 
-    const centerY = pageHeight / 2;
+    const blockHeight = nameLines.length * nameLineHeight + addrLines.length * addrLineHeight;
+
+    if (y + blockHeight > pageHeight - marginBottom) {
+      doc.addPage();
+      y = marginTop;
+    }
 
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(34);
-    doc.text(stop.name || ' ', centerX, centerY - 40, { align: 'center', maxWidth: pageWidth - 30 });
+    doc.setFontSize(nameSize);
+    nameLines.forEach((line) => {
+      doc.text(line, marginX, y);
+      y += nameLineHeight;
+    });
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(30);
-    doc.text(stop.street || ' ', centerX, centerY + 10, { align: 'center', maxWidth: pageWidth - 30 });
+    doc.setFontSize(addrSize);
+    addrLines.forEach((line) => {
+      doc.text(line, marginX, y);
+      y += addrLineHeight;
+    });
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(30);
-    doc.text(stop.cityLine || ' ', centerX, centerY + 55, { align: 'center', maxWidth: pageWidth - 30 });
+    if (i < stops.length - 1) {
+      doc.setDrawColor(210, 210, 210);
+      doc.setLineWidth(0.15);
+      doc.line(marginX, y + stopGap / 2, pageWidth - marginX, y + stopGap / 2);
+    }
+
+    y += stopGap;
   });
 
   const filename = (sourceName || 'ruteliste').replace(/\.csv$/i, '') + '.pdf';
