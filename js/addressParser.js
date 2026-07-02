@@ -8,15 +8,21 @@
 // i den officielle postnummerliste, så vi bruger det som anker og arbejder
 // baglæns derfra (husnummer -> evt. lokalitetsnavn -> gade -> kundenavn).
 
+// OBS: "gaard"/"gård", "holm", "lunden", "krog(en)" og bæert "skov" er bevidst
+// udeladt her, selvom de findes i rigtige vejnavne (fx "Klejsgårdvej") - de er
+// også nogle af de allermest almindelige danske efternavne (Aagaard,
+// Vestergaard, Nørgaard, Lund, Holm, Krog, Skov ...), og ville ellers blive
+// fejltolket som vejnavnet i stedet for en del af kundenavnet. "vej" fanger
+// stadig sammensatte vejnavne som "Klejsgårdvej" og "Skovvej".
 const STREET_SUFFIXES = [
-  'vej', 'gade', 'allé', 'alle', 'plads', 'boulevard', 'parken', 'gaard',
-  'gård', 'toften', 'bakken', 'kæret', 'kær', 'holm', 'engen', 'marken',
+  'vej', 'gade', 'allé', 'alle', 'plads', 'boulevard', 'parken',
+  'toften', 'bakken', 'kæret', 'kær', 'engen', 'marken',
   'agre', 'agrene', 'brinken', 'stræde', 'torv', 'torvet', 'vænget',
   'vænge', 'løkken', 'løkke', 'bakke', 'banke', 'banken', 'dalen', 'højen',
-  'lunden', 'ringen', 'stien', 'sti', 'vangen', 'vang', 'brink', 'hegnet',
-  'have', 'haven', 'krogen', 'krog', 'skrænten', 'stykket', 'gyde',
+  'ringen', 'stien', 'sti', 'vangen', 'vang', 'brink', 'hegnet',
+  'have', 'haven', 'skrænten', 'stykket', 'gyde',
   'anlæg', 'alleen', 'passage', 'sving', 'svinget', 'kilde', 'kilden',
-  'mose', 'mosen', 'agerlund', 'skov', 'skoven', 'skovvej', 'have'
+  'mose', 'mosen', 'agerlund', 'skoven', 'skovvej'
 ];
 
 function endsWithStreetSuffix(word) {
