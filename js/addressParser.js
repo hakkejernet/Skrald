@@ -35,11 +35,11 @@ function isDigits(t) {
 }
 
 function isShortLowerLetter(t) {
-  return /^[a-zæøå]{1,2}$/.test(t);
+  return /^\p{Ll}{1,2}$/u.test(t);
 }
 
 function isWordLike(t) {
-  return /^[A-Za-zÆØÅæøå.\/-]{2,}$/.test(t);
+  return /^[\p{L}.\/-]{2,}$/u.test(t);
 }
 
 function isValidPostalCode(code) {
@@ -57,15 +57,18 @@ function insertWordBoundaries(compact) {
   // "MIHTEC ApS Klejsgårdvej", ikke "MIHTECAp" + "SKlejsgårdvej"). De
   // beskyttes midlertidigt med et mærke, så lille->stort-reglen nedenfor ikke
   // splitter dem ad indeni (Ap|S).
-  s = s.replace(/(?<=[A-Za-zÆØÅæøå])(?=A\/S)/g, ' ');
-  s = s.replace(/(?<=A\/S)(?=[A-Za-zÆØÅæøå])/g, ' ');
-  s = s.replace(/(?<=[A-Za-zÆØÅæøå])(?=ApS)/g, ' ');
-  s = s.replace(/(?<=ApS)(?=[A-Za-zÆØÅæøå])/g, ' ');
+  s = s.replace(/(?<=\p{L})(?=A\/S)/gu, ' ');
+  s = s.replace(/(?<=A\/S)(?=\p{L})/gu, ' ');
+  s = s.replace(/(?<=\p{L})(?=ApS)/gu, ' ');
+  s = s.replace(/(?<=ApS)(?=\p{L})/gu, ' ');
   s = s.replace(/A\/S/g, ' ASSUFFIX ');
   s = s.replace(/ApS/g, ' APSSUFFIX ');
-  s = s.replace(/([a-zA-ZæøåÆØÅ])(\d)/g, '$1 $2');
-  s = s.replace(/(\d)([a-zA-ZæøåÆØÅ])/g, '$1 $2');
-  s = s.replace(/([a-zæøå])([A-ZÆØÅ])/g, '$1 $2');
+  // \p{L} dækker enhver bogstav-variant (inkl. accenter som "é" i "Allé"),
+  // ikke kun dansk æøå - ellers glider tal fast på et ord der ender på en
+  // bogstav uden for den snævre liste (fx "Allé6" blev aldrig splittet).
+  s = s.replace(/(\p{L})(\d)/gu, '$1 $2');
+  s = s.replace(/(\d)(\p{L})/gu, '$1 $2');
+  s = s.replace(/(\p{Ll})(\p{Lu})/gu, '$1 $2');
   s = s.replace(/\s+/g, ' ').trim();
   s = s.replace(/ASSUFFIX/g, 'A/S');
   s = s.replace(/APSSUFFIX/g, 'ApS');
