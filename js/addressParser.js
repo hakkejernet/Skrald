@@ -203,6 +203,15 @@ function parseAddress(raw) {
     }
   }
 
+  // Nogle adresser nævner byen en ekstra gang lige efter kundenavnet, adskilt
+  // med komma (fx "Møllers ApS ,Juelsminde") - fjern det, så byen kun står i
+  // postnr/by-feltet.
+  if (city) {
+    const escapedCity = city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const trailingCityRe = new RegExp('\\s*,\\s*' + escapedCity + '\\s*$', 'i');
+    name = name.replace(trailingCityRe, '').trim();
+  }
+
   const ok = Boolean(postalCode && houseNumber);
 
   return { name, street: streetLine, cityLine, ok, original };
