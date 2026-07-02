@@ -12,8 +12,14 @@ første indlæsning - alt (inkl. jsPDF-biblioteket) ligger i repoet.
 2. Vælg eller træk én eller flere CSV-filer ind.
 3. Tryk **Konverter**.
 4. Gennemgå den udtrukne liste pr. fil - rækker der ikke kunne tolkes
-   sikkert er markeret **Tjek**. Ret felterne direkte hvis noget er forkert.
+   sikkert er markeret **Tjek**. Ret felterne direkte hvis noget er forkert,
+   eller brug **⇄**-knappen til hurtigt at bytte kundenavn og vej om.
 5. Tryk **Generér PDF** for hver fil for at downloade den.
+
+Rettelser huskes lokalt i browseren (nøglet på den rå adressetekst), så
+samme adresse ikke skal rettes igen ugen efter - det kræver at DriverLogin
+skriver adressen identisk hver gang. Antal huskede rettelser og en
+nulstillingsknap vises under Konverter-knappen.
 
 ## Hvordan adressen tolkes
 
@@ -41,6 +47,7 @@ enkelte linjer inden PDF'en genereres.
 - `js/csvParser.js` - CSV-indlæsning (komma/semikolon, anførselstegn)
 - `js/addressParser.js` - adresse-parsing
 - `js/postalCodes.js` - danske postnumre → bynavn (kilde: PostNord)
+- `js/corrections.js` - husker manuelle rettelser lokalt (localStorage)
 - `js/pdfGenerator.js` - PDF-generering med jsPDF
 - `js/app.js` - UI-logik
 - `lib/jspdf.umd.min.js` - jsPDF (MIT-licens), vendored for offline-brug
