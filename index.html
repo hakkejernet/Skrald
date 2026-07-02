@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSV → Spoke OCR</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Rute PDF">
+<meta name="theme-color" content="#1c2b3a">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>DriverLogin CSV → Spoke OCR</h1>
+    <p class="app-header__sub">Konverter dagens CSV-rute til en OCR-venlig PDF</p>
+  </header>
+
+  <main>
+    <div id="dropZone" class="drop-zone">
+      <p><strong>Tryk her</strong> eller træk CSV-fil(er) ind</p>
+      <input id="fileInput" type="file" accept=".csv,text/csv" multiple hidden>
+    </div>
+
+    <ul id="fileList" class="file-list"></ul>
+
+    <button id="convertBtn" class="btn btn--primary btn--wide" disabled>Konverter</button>
+
+    <p id="status" class="status" role="status"></p>
+
+    <div id="results"></div>
+  </main>
+
+  <footer class="app-footer">
+    <p>Kører 100% lokalt i din browser - ingen data sendes nogen steder.</p>
+  </footer>
+
+  <script src="lib/jspdf.umd.min.js"></script>
+  <script src="js/postalCodes.js"></script>
+  <script src="js/csvParser.js"></script>
+  <script src="js/addressParser.js"></script>
+  <script src="js/pdfGenerator.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
