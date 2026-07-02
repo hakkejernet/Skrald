@@ -152,6 +152,27 @@ function parseAddress(raw) {
     }
   }
 
+  if (!houseNumber) {
+    // Nogle stop har vejnavn+husnummer FØR kundenavnet i stedet for efter
+    // (fx "Klejsgårdvej 3 Helle Ahrensen" i stedet for det normale
+    // "Helle Ahrensen Klejsgårdvej 3"), så det almindelige baglæns-tjek
+    // ovenfor finder intet husnummer. Led i stedet forlæns efter det første
+    // sted en kendt vejendelse efterfølges direkte af et tal.
+    for (let i = 0; i < beforeTokens.length - 1; i++) {
+      if (!endsWithStreetSuffix(beforeTokens[i]) || !isDigits(beforeTokens[i + 1])) continue;
+      let hn = beforeTokens[i + 1];
+      let restStart = i + 2;
+      if (isShortLowerLetter(beforeTokens[i + 2])) {
+        hn += beforeTokens[i + 2];
+        restStart = i + 3;
+      }
+      const name = beforeTokens.slice(0, i).concat(beforeTokens.slice(restStart)).join(' ');
+      const streetLine = [beforeTokens[i], hn].filter(Boolean).join(' ').trim();
+      const cityLine = `${postalCode} ${city}`.trim();
+      return { name, street: streetLine, cityLine, ok: true, original };
+    }
+  }
+
   const nameStreetTokens = beforeTokens.slice(0, streetEnd);
 
   let streetStart = nameStreetTokens.length;
@@ -167,9 +188,20 @@ function parseAddress(raw) {
   }
 
   const streetName = nameStreetTokens.slice(streetStart).join(' ');
-  const name = nameStreetTokens.slice(0, streetStart).join(' ');
+  let name = nameStreetTokens.slice(0, streetStart).join(' ');
   const streetLine = [streetName, houseNumber].filter(Boolean).join(' ').trim();
   const cityLine = locality ? `${locality}, ${postalCode} ${city}` : `${postalCode} ${city}`.trim();
+
+  // Nogle adresser nævner vej+husnummer to gange (fx som uformelt
+  // stedsnavn før kundenavnet, og igen formelt lige før postnummeret) -
+  // fjern gentagelsen fra kundenavnet, så den kun står i vej-feltet.
+  if (streetLine) {
+    if (name === streetLine) {
+      name = '';
+    } else if (name.startsWith(streetLine + ' ')) {
+      name = name.slice(streetLine.length + 1).trim();
+    }
+  }
 
   const ok = Boolean(postalCode && houseNumber);
 
