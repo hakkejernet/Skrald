@@ -192,6 +192,28 @@ for (let i = 0; i < ITERATIONS; i++) {
     if (!combinedLower.includes(parts.cityName.toLowerCase())) {
       problems.push(`bynavn "${parts.cityName}" findes ikke nogen steder i outputtet`);
     }
+
+    // Når parseren melder ok:true, har den pr. konstruktion fundet et
+    // husnummer (ok = Boolean(postalCode && houseNumber)), og husnummeret
+    // indgår altid i streetLine - så street kan aldrig være tom her. NB:
+    // dette er IKKE det samme som "street er aldrig tom overhovedet" - når
+    // parseren ikke kan finde et husnummer/postnummer, returnerer den
+    // bevidst en tom street OG ok:false, så appens "Tjek"-UI beder brugeren
+    // rette den manuelt i stedet for at lade parseren gætte forkert. Det er
+    // et kendt, dokumenteret undtagelses-tilfælde (se README), ikke en fejl.
+    if (result.ok && result.street.trim() === '') {
+      problems.push(`ok:true men street er tom efter trim() ("${result.street}")`);
+    }
+
+    // Postnummeret må aldrig blive ændret/opfundet - det præcise 4-cifrede
+    // tal der står i cityLine skal være det samme som blev lagt ind, hvis
+    // der overhovedet står et 4-cifret tal der.
+    const postalInOutput = result.cityLine.match(/\b\d{4}\b/);
+    if (postalInOutput && postalInOutput[0] !== parts.postalCode) {
+      problems.push(
+        `postnummer ændret: forventede "${parts.postalCode}", fandt "${postalInOutput[0]}" i cityLine ("${result.cityLine}")`
+      );
+    }
   }
 
   if (problems.length) {
