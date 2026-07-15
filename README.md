@@ -43,17 +43,30 @@ enkelte linjer inden PDF'en genereres.
 
 ## Tests
 
-`test/fuzz.js` er en lille håndrullet property-based/fuzz-test (ingen
-eksterne afhængigheder - kør direkte med Node) der genererer tusindvis af
-syntetiske, realistisk-formede adresser og tjekker at parseren aldrig
-crasher, returnerer undefined/NaN, eller mister postnummer/by. Den tjekker
-*robusthed*, ikke at navn/vej-opdelingen er perfekt for alle syntetiske
-input - det er et kendt, accepteret vilkår for denne parser.
+- `test/regression.js` - konkrete, virkelige adresser og CSV-tilfælde fundet
+  og rettet undervejs i projektet. Kør med `node test/regression.js`.
+- `test/fuzz.js` - en lille håndrullet property-based/fuzz-test (ingen
+  eksterne afhængigheder) der genererer tusindvis af syntetiske,
+  realistisk-formede adresser og tjekker at parseren aldrig crasher,
+  returnerer undefined/NaN, mister postnummer/by, eller (når den melder
+  `ok:true`) returnerer en tom vejlinje. Tjekker *robusthed*, ikke at
+  navn/vej-opdelingen er perfekt for alle syntetiske input - det er et
+  kendt, accepteret vilkår for denne parser.
+  ```
+  node test/fuzz.js
+  FUZZ_SEED=123 FUZZ_ITERATIONS=20000 node test/fuzz.js   # flere iterationer, anden seed
+  ```
+- `test/build-check.js` - bekræfter at index.html's filreferencer findes og
+  at alle .js-filer er syntaktisk gyldige (der er ingen build-proces at
+  fejle i, så dette er stedfortræder for et "byg"-trin). Kør med
+  `node test/build-check.js`.
 
-```
-node test/fuzz.js
-FUZZ_SEED=123 FUZZ_ITERATIONS=20000 node test/fuzz.js   # flere iterationer, anden seed
-```
+Alle tre kører automatisk i GitHub Actions ved hvert push og hver pull
+request mod `main` (`.github/workflows/ci.yml`), med 10.000 fuzz-iterationer.
+For at forhindre at en fejlende commit rent faktisk kan merges til `main`,
+skal denne CI-check også slås til som en *required status check* under
+repoets branch protection-indstillinger (Settings → Branches) - det er ikke
+noget en workflow-fil alene kan gennemtvinge.
 
 ## Mapper
 
