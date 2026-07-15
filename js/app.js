@@ -93,11 +93,7 @@
 
   async function readFileSmart(file) {
     const buf = await file.arrayBuffer();
-    let text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
-    if (text.includes('�')) {
-      text = new TextDecoder('windows-1252').decode(buf);
-    }
-    return text;
+    return decodeCSV(buf);
   }
 
   function setBadge(row, stop) {

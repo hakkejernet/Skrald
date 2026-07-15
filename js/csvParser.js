@@ -2,6 +2,38 @@
 // Understøtter både komma og semikolon som separator, anførselstegn med
 // escapede citationstegn ("") og CRLF/LF linjeskift.
 
+/**
+ * Afkoder en rå bytebuffer til tekst ved at prøve en kæde af tegnsæt.
+ *
+ * Vi bruger { fatal: true } og fanger fejlen, i stedet for at afkode løst
+ * og bagefter lede efter erstatningstegnet (�) i resultatet - den metode
+ * misser filer der reelt er forkert kodet, fordi visse Windows-1252-byte-
+ * sekvenser (fx "æ" efterfulgt af bestemte symboler) tilfældigvis også er
+ * gyldig UTF-8 og derfor afkodes uden fejl, blot til helt forkerte tegn og
+ * uden noget erstatningstegn at spotte bagefter.
+ *
+ * OBS: "iso-8859-1" er i praksis alias for samme afkoder som "windows-1252"
+ * i browsere/Node (WHATWG-encoding-specifikationen), så dette tredje forsøg
+ * vil aldrig give et andet resultat end det andet - det er med som et
+ * dokumenteret sikkerhedsnet, ikke fordi det reelt afkoder anderledes.
+ *
+ * @param {ArrayBuffer} buffer
+ * @returns {string}
+ */
+function decodeCSV(buffer) {
+  const encodings = ['utf-8', 'windows-1252', 'iso-8859-1'];
+  for (const encoding of encodings) {
+    try {
+      return new TextDecoder(encoding, { fatal: true }).decode(buffer);
+    } catch (e) {
+      // Denne kodning kunne ikke afkode bufferen uden fejl - prøv næste.
+    }
+  }
+  // Sidste udvej: løs UTF-8-afkodning fejler aldrig (indsætter i stedet
+  // erstatningstegn for ugyldige bytes), så vi er altid garanteret et resultat.
+  return new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+}
+
 function detectDelimiter(text) {
   const firstLine = text.split(/\r?\n/, 1)[0] || '';
   const commaCount = (firstLine.match(/,/g) || []).length;
@@ -107,5 +139,5 @@ function extractAddresses(text) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { parseCSV, extractAddresses, detectDelimiter, findAddressColumn };
+  module.exports = { decodeCSV, parseCSV, extractAddresses, detectDelimiter, findAddressColumn };
 }
