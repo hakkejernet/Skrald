@@ -25,53 +25,86 @@ const STREET_SUFFIXES = [
   'mose', 'mosen', 'agerlund', 'skoven', 'skovvej'
 ];
 
+// Statiske regexer hoistes til modul-niveau, så de kun kompileres én gang i
+// stedet for ved hvert kald (isDigits/isShortLowerLetter/isWordLike kaldes
+// pr. token i løkker). Ingen af dem bruger g/y-flag, så de er stateless og
+// sikre at genbruge på tværs af kald.
+const DIGITS_RE = /^\d+$/;
+const SHORT_LOWER_LETTER_RE = /^\p{Ll}{1,2}$/u;
+const WORD_LIKE_RE = /^[\p{L}.\/-]{2,}$/u;
+
 function endsWithStreetSuffix(word) {
   const w = word.toLowerCase();
   return STREET_SUFFIXES.some((suf) => w.endsWith(suf) && w.length > suf.length);
 }
 
 function isDigits(t) {
-  return /^\d+$/.test(t);
+  return DIGITS_RE.test(t);
 }
 
 function isShortLowerLetter(t) {
-  return /^\p{Ll}{1,2}$/u.test(t);
+  return SHORT_LOWER_LETTER_RE.test(t);
 }
 
 function isWordLike(t) {
-  return /^[\p{L}.\/-]{2,}$/u.test(t);
+  return WORD_LIKE_RE.test(t);
 }
 
 function isValidPostalCode(code) {
   return Object.prototype.hasOwnProperty.call(DK_POSTAL_CODES, code);
 }
 
+// c/o og v/-adresser bruger lille "v"/"c", som ikke rammer lille->stort reglen.
+const V_SLASH_RE = /([^\s])(v\/)/gi;
+const C_O_RE = /([^\s])(c\/o)/gi;
+
+// Selskabsformer (ApS, A/S) skal holdes samlet og adskilt fra ord på begge
+// sider, uanset store/små bogstaver (fx "MIHTECApSKlejsgårdvej" skal give
+// "MIHTEC ApS Klejsgårdvej", ikke "MIHTECAp" + "SKlejsgårdvej"). De to
+// retninger (før/efter) er slået sammen med alternering (A/S|ApS), så det
+// er to gennemløb i stedet for fire.
+const COMPANY_SUFFIX_BEFORE_RE = /(?<=\p{L})(?=A\/S|ApS)/gu;
+const COMPANY_SUFFIX_AFTER_RE = /(?<=A\/S|ApS)(?=\p{L})/gu;
+// Beskyttes midlertidigt med et mærke, så lille->stort-reglen nedenfor ikke
+// splitter dem ad indeni (Ap|S). Ét gennemløb med en erstatnings-funktion
+// i stedet for to separate replace-kald pr. selskabsform.
+const COMPANY_SUFFIX_RE = /(A\/S|ApS)/g;
+const COMPANY_SUFFIX_PLACEHOLDER = { 'A/S': ' ASSUFFIX ', ApS: ' APSSUFFIX ' };
+const COMPANY_SUFFIX_RESTORE_RE = /ASSUFFIX|APSSUFFIX/g;
+const COMPANY_SUFFIX_RESTORE = { ASSUFFIX: 'A/S', APSSUFFIX: 'ApS' };
+
+// \p{L} dækker enhver bogstav-variant (inkl. accenter som "é" i "Allé"),
+// ikke kun dansk æøå - ellers glider tal fast på et ord der ender på en
+// bogstav uden for en snæver liste (fx "Allé6" blev aldrig splittet).
+//
+// Disse tre forbliver bevidst SEPARATE gennemløb og er IKKE slået sammen
+// til én alterneringsregex, selvom det først ser ud til at være muligt
+// (ingen af dem overlapper jo i hvad de matcher). Problemet er at et
+// enkelt samlet gennemløb forbruger tegnene i rækkefølge og derfor kan
+// "stjæle" et tal fra den forkerte nabo: i "11a7130" finder ét kombineret
+// gennemløb fejlagtigt "1a" (ciffer->bogstav) fordi det forrige match
+// ("e1") allerede har forbrugt det første ciffer, i stedet for at finde
+// "a7" (bogstav->ciffer) som de tre separate, fulde gennemløb gør. Det
+// splitter "Skolegade11a7130" forkert til "Skolegade 11 a7130" i stedet
+// for korrekt "Skolegade 11a 7130". Bekræftet med et regressionstjek før
+// denne kode blev skrevet - behold som tre gennemløb.
+const LETTER_DIGIT_RE = /(\p{L})(\d)/gu;
+const DIGIT_LETTER_RE = /(\d)(\p{L})/gu;
+const LOWER_UPPER_RE = /(\p{Ll})(\p{Lu})/gu;
+
 // Sætter mellemrum ind ved sikre ordgrænser: bogstav<->tal og lille->stort bogstav.
 function insertWordBoundaries(compact) {
   let s = compact;
-  // c/o og v/-adresser bruger lille "v"/"c", som ikke rammer lille->stort reglen.
-  s = s.replace(/([^\s])(v\/)/gi, '$1 $2');
-  s = s.replace(/([^\s])(c\/o)/gi, '$1 $2');
-  // Selskabsformer (ApS, A/S) skal holdes samlet og adskilt fra ord på begge
-  // sider, uanset store/små bogstaver (fx "MIHTECApSKlejsgårdvej" skal give
-  // "MIHTEC ApS Klejsgårdvej", ikke "MIHTECAp" + "SKlejsgårdvej"). De
-  // beskyttes midlertidigt med et mærke, så lille->stort-reglen nedenfor ikke
-  // splitter dem ad indeni (Ap|S).
-  s = s.replace(/(?<=\p{L})(?=A\/S)/gu, ' ');
-  s = s.replace(/(?<=A\/S)(?=\p{L})/gu, ' ');
-  s = s.replace(/(?<=\p{L})(?=ApS)/gu, ' ');
-  s = s.replace(/(?<=ApS)(?=\p{L})/gu, ' ');
-  s = s.replace(/A\/S/g, ' ASSUFFIX ');
-  s = s.replace(/ApS/g, ' APSSUFFIX ');
-  // \p{L} dækker enhver bogstav-variant (inkl. accenter som "é" i "Allé"),
-  // ikke kun dansk æøå - ellers glider tal fast på et ord der ender på en
-  // bogstav uden for den snævre liste (fx "Allé6" blev aldrig splittet).
-  s = s.replace(/(\p{L})(\d)/gu, '$1 $2');
-  s = s.replace(/(\d)(\p{L})/gu, '$1 $2');
-  s = s.replace(/(\p{Ll})(\p{Lu})/gu, '$1 $2');
+  s = s.replace(V_SLASH_RE, '$1 $2');
+  s = s.replace(C_O_RE, '$1 $2');
+  s = s.replace(COMPANY_SUFFIX_BEFORE_RE, ' ');
+  s = s.replace(COMPANY_SUFFIX_AFTER_RE, ' ');
+  s = s.replace(COMPANY_SUFFIX_RE, (m) => COMPANY_SUFFIX_PLACEHOLDER[m]);
+  s = s.replace(LETTER_DIGIT_RE, '$1 $2');
+  s = s.replace(DIGIT_LETTER_RE, '$1 $2');
+  s = s.replace(LOWER_UPPER_RE, '$1 $2');
   s = s.replace(/\s+/g, ' ').trim();
-  s = s.replace(/ASSUFFIX/g, 'A/S');
-  s = s.replace(/APSSUFFIX/g, 'ApS');
+  s = s.replace(COMPANY_SUFFIX_RESTORE_RE, (m) => COMPANY_SUFFIX_RESTORE[m]);
   return s;
 }
 
@@ -104,11 +137,14 @@ function parseAddress(raw) {
       postalCode = t;
       break;
     }
-    if (t.length > 4 && isValidPostalCode(t.slice(-4))) {
-      postalIdx = i;
-      postalCode = t.slice(-4);
-      houseDigitsFromSplit = t.slice(0, -4);
-      break;
+    if (t.length > 4) {
+      const last4 = t.slice(-4);
+      if (isValidPostalCode(last4)) {
+        postalIdx = i;
+        postalCode = last4;
+        houseDigitsFromSplit = t.slice(0, -4);
+        break;
+      }
     }
   }
 
