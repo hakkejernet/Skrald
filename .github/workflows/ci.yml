@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Regressionstests
+        run: node test/regression.js
+      - name: Fuzz-test adresseparser (10.000 adresser)
+        run: node test/fuzz.js
+        env:
+          FUZZ_ITERATIONS: '10000'
+      - name: Byg-tjek (referencer + JS-syntaks)
+        run: node test/build-check.js
