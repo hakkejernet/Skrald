@@ -41,6 +41,20 @@ Da opdelingen mellem kundenavn og vejnavn ikke altid kan afgøres 100 %
 sikkert, er der indbygget en redigerbar forhåndsvisning, så du kan rette
 enkelte linjer inden PDF'en genereres.
 
+## Tests
+
+`test/fuzz.js` er en lille håndrullet property-based/fuzz-test (ingen
+eksterne afhængigheder - kør direkte med Node) der genererer tusindvis af
+syntetiske, realistisk-formede adresser og tjekker at parseren aldrig
+crasher, returnerer undefined/NaN, eller mister postnummer/by. Den tjekker
+*robusthed*, ikke at navn/vej-opdelingen er perfekt for alle syntetiske
+input - det er et kendt, accepteret vilkår for denne parser.
+
+```
+node test/fuzz.js
+FUZZ_SEED=123 FUZZ_ITERATIONS=20000 node test/fuzz.js   # flere iterationer, anden seed
+```
+
 ## Mapper
 
 - `index.html`, `style.css` - UI
